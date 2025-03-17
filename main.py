@@ -5,6 +5,11 @@ import load_data
 
 
 
+def leaky_relu(x, alpha=0.01):
+    return x if x > 0 else alpha * x
+
+def leaky_relu_derivative(x, alpha=0.01):
+    return 1 if x > 0 else alpha
 
 random.seed(42)
 
@@ -33,15 +38,15 @@ def sigmoid_derivative(x):
 
 class Neuronio:
     def __init__(self, n_inputs, activation_func, activation_deriv_func):
-        self.weights = [random.uniform(0, 0.05) for _ in range(n_inputs)]
-        self.bias = 0
+        self.weights = [random.uniform(0, 0.7) for _ in range(n_inputs)]
+        self.bias = random.uniform(0, 0.7)
         self.activation_func = activation_func
         self.activation_deriv_func = activation_deriv_func
         self.output = None
         self.error = None
         self.last_weighted_sum = None
         self.last_input = None
-        
+        self.MAX_GRAD = 10.0
     def multiply_arrays(self, a, b):
         if len(a) != len(b):
             raise ValueError("As listas devem ter o mesmo tamanho")
@@ -61,6 +66,8 @@ class Neuronio:
 
     def calculate_error_output_layer(self, y):
         self.error = (y[0]-self.output) * self.activation_deriv_func(self.last_weighted_sum + self.bias)
+        self.error = max(min(self.error, self.MAX_GRAD), -self.MAX_GRAD)
+
         return self.error 
     
     def calculate_error_hidden_layer(self, error_next_layer, weights_next_layer):
@@ -71,6 +78,7 @@ class Neuronio:
                 sum_error += erro * neuro_wheigh
         
         self.error = sum_error * self.activation_deriv_func(self.last_weighted_sum + self.bias)
+        self.error = max(min(self.error, self.MAX_GRAD), -self.MAX_GRAD)
         return self.error
 
     def update_weights(self, learning_rate):
@@ -96,8 +104,8 @@ class Layer:
             if y_expected:
                 neuron.calculate_error_output_layer(y_expected)
                 for j, _ in enumerate(neuron.weights):
-                    neuron.weights[j] = learning_rate * neuron.error * neuron.output
-                neuron.bias = neuron.error * learning_rate
+                    neuron.weights[j] -= learning_rate * neuron.error * neuron.output
+                neuron.bias -= neuron.error * learning_rate
                 
             else:
                 neuron.calculate_error_hidden_layer(error_next_layer, weights_next_layer[i])
@@ -166,32 +174,32 @@ class MLP:
 
 
 # Treinamento da rede neural
-RANGE = 0.999
-inputs, outputs = load_data.read_speed()
+RANGE = 0.995
+inputs, outputs = load_data.read_walmart()
 inputs_train, inputs_test = load_data.split_array(inputs, RANGE)
 outputs_train, outputs_test = load_data.split_array(outputs, RANGE)
 
 mlp = MLP(input_dim=len(inputs_train[0]), 
-          layers_dims=[2,3,6,3], 
+          layers_dims=[2,3,4,2], 
           output_dim=len(outputs_train[0]),
-          activation_func=relu,
-          activation_deriv_func=relu_derivative)
+          activation_func=leaky_relu,
+          activation_deriv_func=leaky_relu_derivative)
 
 def end_epoch():
     predictions = mlp.predict(inputs_test)
     for i, pred in enumerate(predictions):
-        print(pred, outputs_test[i])
+        print(round(pred[0],2), outputs_test[i])
     print("---------------------")
         
 # Treinamento
-mlp.train(inputs_train, outputs_train, epochs=50, learning_rate=0.001, 
+mlp.train(inputs_train, outputs_train, epochs=50, learning_rate=0.0001, 
           #on_end_epoch= end_epoch
           )
 # Teste
 
 
 end_epoch()
-#print("ERROR")
-#for i in mlp.layers:
-#    for j in i.neurons:
-#        print(j.error)
+print("ERROR")
+for i in mlp.layers:
+    for j in i.neurons:
+        print(j.error)

@@ -6,7 +6,7 @@ data = []
 for _ in range(1000):
     d = random.randint(1, 100)  # Distância aleatória entre 1 e 100
     t = random.randint(1, 10)   # Tempo aleatório entre 1 e 10
-    v = d / t                   # Calcular a velocidade v
+    v = round(d / t, 2)                   # Calcular a velocidade v
     data.append([d, t, v])
 
 # Criar o DataFrame
